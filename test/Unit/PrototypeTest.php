@@ -3,46 +3,44 @@
 class PrototypeTest extends PHPUnit_Framework_TestCase {
 
 	public function testValue() {
-		$expected = 'bar';
-		$result = value(array('foo' => $expected), 'foo');
-
-		$this->assertEquals($expected, $result);
+		$this->assertEquals('bar', value(array('foo' => 'bar'), 'foo'));
 	}
 
 	public function testValueWithMissingKey() {
-		$expected = 'baz';
-		$result = value(array('foo' => 'bar'), 'qux', $expected);
-
-		$this->assertEquals($expected, $result);
+		$this->assertEquals('baz', value(array('foo' => 'bar'), 'qux', 'baz'));
 	}
 
 	public function testUri() {
-		$expected = 'foo';
-		$result = uri(array('REQUEST_URI' => $expected));
+		$result = uri(array('REQUEST_URI' => '/foo'));
 
-		$this->assertEquals($expected, $result);
+		$this->assertEquals('/foo', $result);
 	}
 
 	public function testUriDefault() {
-		$expected = '/';
-		$result = uri();
+		$result = uri(array());
 
-		$this->assertEquals($expected, $result);
+		$this->assertEquals('/', $result);
 	}
 
 	public function testUriWithQueryString() {
-		$expected = '/foo';
 		$result = uri(array('REQUEST_URI' => '/foo?bar=baz'));
 
-		$this->assertEquals($expected, $result);
+		$this->assertEquals('/foo', $result);
 	}
 
-	public function testOptionSetGet() {
-		$expected = 'bar';
-		option('foo', $expected);
-		$result = option('foo');
+	public function testOptionGet() {
+		$storage = array('foo' => 'bar');
+		$result = option('foo', null, $storage);
 
-		$this->assertEquals($expected, $result);
+		$this->assertEquals('bar', $result);
+	}
+
+	public function testOptionSet() {
+		$storage = array();
+
+		option('foo', 'bar', $storage);
+
+		$this->assertEquals($storage, array('foo' => 'bar'));
 	}
 
 	public function testRoutes() {
@@ -127,6 +125,35 @@ class PrototypeTest extends PHPUnit_Framework_TestCase {
 		$result = run();
 
 		$this->assertEquals('404', $result);
+	}
+
+	public function testRunWithMap() {
+		option('routes', array());
+
+		option('auto_map', function() {
+			return 'mapped';
+		});
+
+		$result = run();
+
+		$this->assertEquals('mapped', $result);
+	}
+
+	public function testViewWithoutDir() {
+		$storage = null;
+		option('view_dir', null, $storage, true);
+		$this->setExpectedException('ErrorException');
+		view('/test');
+	}
+
+	public function testView() {
+		option('view_dir', __DIR__);
+		file_put_contents(__DIR__.'/test.php', 'Hello World');
+		$result = view('/test');
+
+		$this->assertEquals(__DIR__.'/test.php', $result);
+		$this->assertEquals('Hello World', file_get_contents($result));
+		unlink(__DIR__.'/test.php');
 	}
 
 }

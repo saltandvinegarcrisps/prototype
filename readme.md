@@ -2,9 +2,11 @@
 
 For making quick prototype sites not for production.
 
-Simpley include `prototype.php` and define some routes to get started.
+Simpley include `prototype.php` or `vendor/autoload.php` if your using composer and define some routes to get started.
 
-	require __DIR__ . '/prototype.php';
+	//require 'lib/prototype.php';
+	// or
+	//require 'vendor/autoload.php';
 
 	route('/', function() {
 		echo 'Hello World';
@@ -17,7 +19,7 @@ Simpley include `prototype.php` and define some routes to get started.
 	option('view_dir', __DIR__.'/views');
 
 	route('/', function() {
-		echo render('home', array(
+		echo render('home.php', array(
 			'message' => 'Hello World'
 		));
 	});
@@ -27,3 +29,31 @@ Simpley include `prototype.php` and define some routes to get started.
 	option('error_404', function() {
 		echo 'Page not found';
 	});
+
+## Auto map URLs to views
+
+	// /home --> views/home.php
+	option('auto_map', true);
+
+Specify your own auto map callabck.
+
+	// /home --> views/home.html
+	option('auto_map', function($uri) {
+		echo render($uri . '.html');
+	});
+
+Auto map example
+
+	// public/index.php
+	require 'lib/prototype.php';
+
+	// Inside views:
+	// - home.phtml
+	// - about.phtml
+	// - contact.phtml
+	option('view_dir', __DIR__.'/views');
+
+	// /home --> home.phtml
+	option('auto_map', true);
+
+	run();
