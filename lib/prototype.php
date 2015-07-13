@@ -31,7 +31,7 @@ function uri($server = null) {
  * @return mixed
  */
 function value($array, $key, $default = null) {
-	return isset($array[$key]) ? $array[$key] : $default;
+	return array_key_exists($key, $array) ? $array[$key] : $default;
 }
 
 /**
@@ -45,7 +45,7 @@ function value($array, $key, $default = null) {
  */
 function option($name, $value = null, array &$storage = null, $unset = false) {
 	if(null === $storage) {
-		static $storage = array();
+		static $storage = [];
 	}
 
 	if(false === $unset and null === $value) {
@@ -80,16 +80,38 @@ function routes() {
  * @param string
  * @param object
  */
-function route($path, Closure $route = null) {
+function route($uri, Closure $route) {
 	$routes = routes();
 
-	if(null !== $route) {
-		$routes[$path] = $route;
+	$routes[$uri] = $route;
 
-		option('routes', $routes);
+	option('routes', $routes);
+}
+
+/**
+ * Match a uri with a route
+ *
+ * @param string
+ * @return object
+ */
+function match($uri) {
+	$routes = routes();
+
+	if(array_key_exists($uri, $routes)) {
+		option('params', []);
+
+		return value($routes, $uri);
 	}
 
-	return value($routes, $path);
+	foreach($routes as $pattern => $route) {
+		$pattern = preg_replace('#:[a-zA-Z0-9]+#', '([^/]+)', $pattern);
+
+		if(preg_match('#^'.$pattern.'$#', $uri, $matches)) {
+			option('params', array_slice($matches, 1));
+
+			return $route;
+		}
+	}
 }
 
 /**
@@ -99,21 +121,21 @@ function route($path, Closure $route = null) {
  * @param array
  * @return string
  */
-function render($file, array $vars = array()) {
+function render($__file, array $vars = array()) {
 	// try relative path
-	if( ! is_file($file)) {
-		$file = option('view_dir').'/'.$file;
+	if( ! is_file($__file)) {
+		$__file = option('view_dir').'/'.$__file;
 
-		if( ! is_file($file)) {
-			throw new InvalidArgumentException(sprintf('View file not found "%s"', $file));
+		if( ! is_file($__file)) {
+			throw new InvalidArgumentException(sprintf('View file not found "%s"', $__file));
 		}
 	}
 
 	ob_start();
 
-	extract($vars, EXTR_SKIP);
+	extract($vars);
 
-	require $file;
+	require $__file;
 
 	return ob_get_clean();
 }
@@ -156,7 +178,7 @@ function view($uri) {
  */
 function run() {
 	$uri = uri($_SERVER);
-	$route = route($uri);
+	$route = match($uri);
 
 	if(null === $route) {
 		// try to automatically render a file from uri
@@ -183,5 +205,7 @@ function run() {
 		throw new ErrorException(sprintf('Route not found for "%s", use option("error_404", ...Closure)', $uri));
 	}
 
-	return $route();
+	$params = option('params');
+
+	return call_user_func_array($route, $params);
 }
